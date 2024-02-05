@@ -6,7 +6,7 @@ from heapq import nlargest
 from operator import itemgetter
 
 
-bot = telebot.TeleBot(configuration.tokenTestBot)
+bot = telebot.TeleBot(configuration.api_token)
 
 
 @bot.message_handler(commands=['start'])
@@ -24,12 +24,14 @@ def message_start(message):
         f'Бот создан для хранения информации о фишках. Пожалуйста, пользуйтесь исключительно кнопками',
                      parse_mode="HTML", reply_markup=markup)
 
-    connection = sqlite3.connect('pRes.db')
+    connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM Users WHERE telegramId = ?", (user_id,))
     result = cursor.fetchall()
+    connection.commit()
+    connection.close()
     if not result:
-        connection = sqlite3.connect('pRes.db')
+        connection = sqlite3.connect(configuration.database)
         cursor = connection.cursor()
         cursor.execute('INSERT INTO Users (telegramId,username,chips) VALUES (?, ?, ?)', (user_id, user_name, 0))
 
@@ -42,7 +44,6 @@ def message_start(message):
         connection.commit()
         connection.close()
     else:
-        print("Уже существует такой игрок", user_id, " - ", user_name)
         bot.send_message(message.chat.id, f'Вы уже зарегистрированы', parse_mode="HTML")
 
 
@@ -55,7 +56,7 @@ def set_chips(message):
 def us_chips(message):
     user_chips = message.text.strip()
     user_id = message.from_user.id
-    connection = sqlite3.connect('pRes.db')
+    connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
 
     # Получение айди из базы
@@ -72,7 +73,6 @@ def us_chips(message):
 
     # 0Обновляем текущие фишки
     cursor.execute("UPDATE Users SET chips = ? WHERE telegramId = ?", (user_chips, user_id))
-    print("текущие фишки у ", user_id, user_chips)
     connection.commit()
 
     # 1Получение чипс_ван из БД
@@ -120,7 +120,7 @@ def us_chips(message):
 def get_info(message):
     user_id = message.from_user.id
 
-    connection = sqlite3.connect('pRes.db')
+    connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
     cursor.execute("SELECT username, chips FROM Users WHERE telegramId = ?", (user_id,))
     result = cursor.fetchall()
@@ -135,7 +135,7 @@ def get_info(message):
 @bot.message_handler(commands=['stats'])
 def get_stats(message):
     user_id = message.from_user.id
-    connection = sqlite3.connect('pRes.db')
+    connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
     cursor.execute("SELECT id FROM Users WHERE telegramId = ?", (user_id,))
     result_id = cursor.fetchall()
@@ -147,7 +147,6 @@ def get_stats(message):
     connection.close()
     if result_chips[0][3] != None:
         for chips_o, chips_tw, chips_th, chips_f in result_chips:
-            print(chips_o, chips_tw, chips_th, chips_f)
             diff_one = chips_o - chips_tw
             diff_two = chips_th - chips_f
             bot.send_message(message.chat.id,
@@ -163,7 +162,7 @@ def get_stats(message):
 
 @bot.message_handler(commands=['top'])
 def get_top(message):
-    connection = sqlite3.connect('pRes.db')
+    connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
     cursor.execute("SELECT userName, chips FROM Users")
     result = cursor.fetchall()
