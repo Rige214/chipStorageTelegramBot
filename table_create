@@ -1,0 +1,17 @@
+CREATE TABLE "stat_chips" (
+	"id"	INTEGER,
+	"id_users"	INTEGER,
+	"chips_one"	TEXT,
+	"chips_two"	TEXT,
+	"chips_three"	TEXT,
+	"chips_fourth"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
+
+CREATE TABLE "users" (
+	"id"	INTEGER,
+	"telegram_id"	INTEGER,
+	"username"	TEXT,
+	"chips"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
+)
