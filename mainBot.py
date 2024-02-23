@@ -5,7 +5,6 @@ import sqlite3
 from heapq import nlargest
 from operator import itemgetter
 
-
 bot = telebot.TeleBot(configuration.api_token)
 
 
@@ -20,22 +19,22 @@ def message_start(message):
     statistics = types.KeyboardButton(text='/stats')
     top = types.KeyboardButton(text='/top')
     markup.add(info, set_chip, statistics, top)
-    bot.send_message(message.chat.id, f'Приветствую,<strong> {user_name} !</strong>\n'
-        f'Бот создан для хранения информации о фишках. Пожалуйста, пользуйтесь исключительно кнопками',
+    bot.send_message(message.chat.id, f'Приветствую, <strong> {user_name} !</strong>\n Бот создан для хранения'
+                                      f' информации о фишках. Пожалуйста, пользуйтесь исключительно кнопками',
                      parse_mode="HTML", reply_markup=markup)
 
     connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM Users WHERE telegramId = ?", (user_id,))
+    cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
     result = cursor.fetchall()
     connection.commit()
     connection.close()
     if not result:
         connection = sqlite3.connect(configuration.database)
         cursor = connection.cursor()
-        cursor.execute('INSERT INTO Users (telegramId,username,chips) VALUES (?, ?, ?)', (user_id, user_name, 0))
+        cursor.execute('INSERT INTO users (telegram_id,username,chips) VALUES (?, ?, ?)', (user_id, user_name, 0))
 
-        cursor.execute("SELECT id FROM Users WHERE telegramId = ?", (user_id,))
+        cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (user_id,))
         result_id = cursor.fetchall()
         user_bd_id = result_id[0][0]
         cursor.execute(
@@ -44,7 +43,7 @@ def message_start(message):
         connection.commit()
         connection.close()
     else:
-        bot.send_message(message.chat.id, f'Вы уже зарегистрированы', parse_mode="HTML")
+        bot.send_message(message.chat.id, f'<u> <b> Вы уже зарегистрированы ! </b> </u>', parse_mode="HTML")
 
 
 @bot.message_handler(commands=['setChips'])
@@ -60,29 +59,29 @@ def us_chips(message):
     cursor = connection.cursor()
 
     # Получение айди из базы
-    cursor.execute("SELECT id FROM Users WHERE telegramId = ?", (user_id,))
+    cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (user_id,))
     result_id = cursor.fetchall()
     user_bd_id = result_id[0][0]
     connection.commit()
 
     # 0Получение текущего кол-ва фишек для присвоения в чипс_ван
-    cursor.execute("SELECT chips FROM Users WHERE id =?", (str(user_bd_id), ))
+    cursor.execute("SELECT chips FROM users WHERE id =?", (str(user_bd_id),))
     result_chips_curr_to_one = cursor.fetchall()
     ch_curr_to_one = result_chips_curr_to_one[0][0]
     connection.commit()
 
     # 0Обновляем текущие фишки
-    cursor.execute("UPDATE Users SET chips = ? WHERE telegramId = ?", (user_chips, user_id))
+    cursor.execute("UPDATE users SET chips = ? WHERE telegram_id = ?", (user_chips, user_id))
     connection.commit()
 
     # 1Получение чипс_ван из БД
-    cursor.execute("SELECT chips_one FROM stat_chips WHERE id_users = ?", (str(user_bd_id), ))
+    cursor.execute("SELECT chips_one FROM stat_chips WHERE id_users = ?", (str(user_bd_id),))
     result_chips_one_to_two = cursor.fetchall()
     ch_one_to_two = result_chips_one_to_two[0][0]
     connection.commit()
 
     # 2Получение чипс_ту из БД
-    cursor.execute("SELECT chips_two FROM stat_chips WHERE id_users = ?", (str(user_bd_id), ))
+    cursor.execute("SELECT chips_two FROM stat_chips WHERE id_users = ?", (str(user_bd_id),))
     result_chips_two_to_three = cursor.fetchall()
     ch_two_to_three = result_chips_two_to_three[0][0]
     connection.commit()
@@ -113,7 +112,7 @@ def us_chips(message):
     connection.commit()
 
     connection.close()
-    bot.send_message(message.chat.id, f'Текущее количество фишек - <code>{user_chips}</code> !', parse_mode="HTML")
+    bot.send_message(message.chat.id, f'Текущее количество фишек <b>—</b> {user_chips} !', parse_mode="HTML")
 
 
 @bot.message_handler(commands=['info'])
@@ -122,11 +121,10 @@ def get_info(message):
 
     connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
-    cursor.execute("SELECT username, chips FROM Users WHERE telegramId = ?", (user_id,))
+    cursor.execute("SELECT username, chips FROM users WHERE telegram_id = ?", (user_id,))
     result = cursor.fetchall()
     for name, chips in result:
-        bot.send_message(message.chat.id,
-            f'Приветствую, <strong>{name} !</strong>\n Количество твоих фишек = <code>{chips}</code> .',
+        bot.send_message(message.chat.id, f'<b>{name}, </b> количество Ваших фишек <b>—</b> {chips}.',
                          parse_mode="HTML")
     connection.commit()
     connection.close()
@@ -137,7 +135,7 @@ def get_stats(message):
     user_id = message.from_user.id
     connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
-    cursor.execute("SELECT id FROM Users WHERE telegramId = ?", (user_id,))
+    cursor.execute("SELECT id FROM users WHERE telegram_id = ?", (user_id,))
     result_id = cursor.fetchall()
     user_bd_id = result_id[0][0]
     cursor.execute("SELECT chips_one, chips_two, chips_three, chips_fourth FROM stat_chips WHERE id_users = ?",
@@ -145,36 +143,37 @@ def get_stats(message):
     result_chips = cursor.fetchall()
     connection.commit()
     connection.close()
-    if result_chips[0][3] != None:
-        for chips_o, chips_tw, chips_th, chips_f in result_chips:
-            diff_one = chips_o - chips_tw
-            diff_two = chips_th - chips_f
-            bot.send_message(message.chat.id,
-                f' {message.from_user.first_name}, разница фишек между первой <code>{str(chips_o)}</code> и второй '
-                f' <code>{str(chips_tw)}</code> игрой составляет : <code>{str(diff_one)}</code>.\n'
-                f' Разница фишек между третьей <code>{str(chips_th)}</code> и четвертой '
-                f' <code>{str(chips_f)}</code> игрой составляет : <code>{str(diff_two)}</code>', parse_mode="HTML")
+
+    if result_chips[0][3] is not None:
+        for chips_f, chips_th, chips_tw, chips_o in result_chips:
+            diff_one = int(chips_f) - int(chips_th)
+            diff_two = int(chips_tw) - int(chips_o)
+            bot.send_message(message.chat.id, f'{message.from_user.first_name}, разница фишек между:\n'
+                                              f'четвертой [<b>{str(chips_f)}</b>] и третьей [<b>{str(chips_th)}</b>]'
+                                              f'игрой <b>—</b> <code>{str(diff_one)} </code>.\n'
+                                              f'второй [<b>{str(chips_tw)}</b>] и первой [<b>{str(chips_o)}</b>] '
+                                              f'игрой <b>—</b> <code> {str(diff_two)}</code>', parse_mode="HTML")
     else:
-        bot.send_message(message.chat.id,
-         f'{message.from_user.first_name}, введите <code> /setChips </code> минимум 4 раза, чтобы узнать статистику.',
-         parse_mode="HTML")
+        bot.send_message(message.chat.id, f'{message.from_user.first_name}, <u> введите </u> <code> /setChips </code> '
+                                          f'<u>минимум 4 раза, чтобы узнать статистику. </u>', parse_mode="HTML")
 
 
 @bot.message_handler(commands=['top'])
 def get_top(message):
     connection = sqlite3.connect(configuration.database)
     cursor = connection.cursor()
-    cursor.execute("SELECT userName, chips FROM Users")
+    cursor.execute("SELECT username, chips FROM users")
     result = cursor.fetchall()
     for name, chips in nlargest(3, result, key=itemgetter(1)):
-        bot.send_message(message.chat.id, f'Имя - {name}, фишки - <code>{chips}</code>', parse_mode="HTML")
+        bot.send_message(message.chat.id, f' {name} <b>—</b> {chips}', parse_mode="HTML")
     connection.commit()
     connection.close()
 
 
 @bot.message_handler(content_types=['text'])
 def use_text(message):
-    bot.send_message(message.chat.id, f'{message.from_user.first_name}, пожалуйста, воспользутесь кнопками')
+    bot.send_message(message.chat.id, f'{message.from_user.first_name}, <u> пожалуйста, воспользутесь кнопками </u>',
+                     parse_mode="HTML")
 
 
 bot.infinity_polling()
